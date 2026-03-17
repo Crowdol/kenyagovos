@@ -1,0 +1,35 @@
+// Authorization Server (simplified)
+const express = require('express');
+const session = require('express-session');
+const app = express();
+
+app.use(session({ secret: 'gov-secret', resave: false, saveUninitialized: true }));
+
+// Login endpoint
+app.get('/login', (req, res) => {
+  // Show login form (in production, use Digital ID authentication)
+  res.send(`
+    <form method="POST" action="/login">
+      <input type="text" name="did" placeholder="DID" />
+      <button type="submit">Login with DID</button>
+    </form>
+  `);
+});
+
+app.post('/login', (req, res) => {
+  // Verify DID signature (omitted for brevity)
+  const { did } = req.body;
+  req.session.user = { did };
+  // Redirect back to the service with auth code
+  const redirectUri = req.query.redirect_uri;
+  const code = generateAuthCode(did);
+  res.redirect(`${redirectUri}?code=${code}`);
+});
+
+// Token endpoint
+app.post('/token', (req, res) => {
+  const { code, client_id, client_secret } = req.body;
+  // Validate code and issue access token
+  const accessToken = jwt.sign({ did: getDidFromCode(code) }, 'secret');
+  res.json({ access_token: accessToken, token_type: 'bearer' });
+});
